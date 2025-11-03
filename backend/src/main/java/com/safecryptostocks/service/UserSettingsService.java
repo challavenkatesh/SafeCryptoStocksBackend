@@ -14,7 +14,7 @@ public class UserSettingsService {
     @Autowired
     private UserSettingsRepository repository;
 
-    // Save or update currency
+    // --- 💰 Currency Operations ---
     public UserSettings saveOrUpdateCurrency(Long userId, CurrencyType currency) {
         UserSettings settings = repository.findByUserId(userId)
                 .orElse(new UserSettings(userId, currency));
@@ -24,10 +24,29 @@ public class UserSettingsService {
         return repository.save(settings);
     }
 
-    // Fetch currency by user ID
     public CurrencyType getCurrencyByUserId(Long userId) {
         return repository.findByUserId(userId)
                 .map(UserSettings::getCurrency)
-                .orElse(CurrencyType.INR); // default INR
+                .orElse(CurrencyType.INR);
+    }
+
+    // --- 🔔 Notification Operations ---
+    public boolean getNotificationStatus(Long userId) {
+        return repository.findByUserId(userId)
+                .map(UserSettings::isNotificationsEnabled)
+                .orElse(false);
+    }
+
+    public UserSettings updateNotificationStatus(Long userId, boolean enabled) {
+        UserSettings settings = repository.findByUserId(userId)
+                .orElseGet(() -> {
+                    UserSettings newSettings = new UserSettings();
+                    newSettings.setUserId(userId);
+                    return newSettings;
+                });
+
+        settings.setNotificationsEnabled(enabled);
+        settings.setUpdatedAt(LocalDateTime.now());
+        return repository.save(settings);
     }
 }

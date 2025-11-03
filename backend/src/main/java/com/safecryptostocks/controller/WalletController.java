@@ -3,8 +3,11 @@ package com.safecryptostocks.controller;
 import com.safecryptostocks.model.Transaction;
 import com.safecryptostocks.model.TransactionType;
 import com.safecryptostocks.model.User;
+import com.safecryptostocks.model.UserSettings;
 import com.safecryptostocks.repository.TransactionRepository;
 import com.safecryptostocks.repository.UserRepository;
+import com.safecryptostocks.repository.UserSettingsRepository;
+import com.safecryptostocks.service.MailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,27 +29,32 @@ public class WalletController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private UserSettingsRepository userSettingsRepository;
+
+    @Autowired
+    private MailService mailService;
+
     // ==================== Get all transactions for a user ====================
     @GetMapping("/{userId}")
     public ResponseEntity<?> getTransactions(@PathVariable Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
-        if (userOpt.isEmpty())
+        if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body("User not found");
+        }
 
         List<Transaction> transactions = transactionRepository.findByUserIdOrderByTimestampDesc(userId);
         return ResponseEntity.ok(transactions);
     }
 
-    // ==================== Add a deposit / withdraw / trade deduction ====================
+    // ==================== Add a deposit / withdraw ====================
     @PostMapping("/{userId}/transaction")
-    public ResponseEntity<?> addTransaction(
-            @PathVariable Long userId,
-            @RequestBody Transaction request
-    ) {
+    public ResponseEntity<?> addTransaction(@PathVariable Long userId, @RequestBody Transaction request) {
         try {
             Optional<User> userOpt = userRepository.findById(userId);
-            if (userOpt.isEmpty())
+            if (userOpt.isEmpty()) {
                 return ResponseEntity.badRequest().body("User not found");
+            }
 
             User user = userOpt.get();
 
@@ -57,8 +65,9 @@ public class WalletController {
                     : transactions.get(0).getTotalAmount();
 
             BigDecimal amount = request.getAmount();
-            if (amount == null)
+            if (amount == null) {
                 return ResponseEntity.badRequest().body("Amount is required");
+            }
 
             BigDecimal newTotal;
 
@@ -66,17 +75,14 @@ public class WalletController {
             if (request.getType() == TransactionType.DEPOSIT) {
                 newTotal = lastTotal.add(amount);
             }
-
             // ==================== Withdraw ====================
             else if (request.getType() == TransactionType.WITHDRAW) {
-                if (amount.compareTo(lastTotal) > 0)
+                if (amount.compareTo(lastTotal) > 0) {
                     return ResponseEntity.badRequest().body("Insufficient balance");
+                }
                 newTotal = lastTotal.subtract(amount);
                 amount = amount.negate(); // store as negative
-            }
-
-            // ==================== Trade (BUY/SELL) ====================
-            else {
+            } else {
                 return ResponseEntity.badRequest().body("Invalid transaction type");
             }
 
@@ -90,6 +96,18 @@ public class WalletController {
             transaction.setTimestamp(LocalDateTime.now());
 
             transactionRepository.save(transaction);
+
+            // ==================== Email Notification (if enabled) ====================
+            Optional<UserSettings> settingsOpt = userSettingsRepository.findByUserId(userId);
+            if (settingsOpt.isPresent() && settingsOpt.get().isNotificationsEnabled()) {
+                mailService.sendWalletNotification(
+                        user.getEmail(),
+                        user.getFullname(),
+                        request.getAmount().abs().doubleValue(),
+                        "INR",
+                        request.getType().name()
+                );
+            }
 
             return ResponseEntity.ok(transaction);
 

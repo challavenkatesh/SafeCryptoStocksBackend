@@ -1,13 +1,9 @@
 package com.safecryptostocks.controller;
 
-import com.safecryptostocks.model.Trade;
-import com.safecryptostocks.model.Transaction;
-import com.safecryptostocks.model.TransactionType;
-import com.safecryptostocks.model.User;
+import com.safecryptostocks.model.*;
+import com.safecryptostocks.repository.*;
+import com.safecryptostocks.service.MailService;
 import com.safecryptostocks.service.PortfolioService;
-import com.safecryptostocks.repository.TradeRepository;
-import com.safecryptostocks.repository.TransactionRepository;
-import com.safecryptostocks.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +30,15 @@ public class TradeController {
 
     @Autowired
     private PortfolioService portfolioService;
+
+    @Autowired
+    private UserSettingsRepository userSettingsRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository; // ✅ Add this
+
+    @Autowired
+    private MailService mailService;
 
     // ==================== Get all trades for a user ====================
     @GetMapping
@@ -71,6 +76,7 @@ public class TradeController {
             if (userOpt.isEmpty()) {
                 return ResponseEntity.badRequest().body("User not found");
             }
+
             User user = userOpt.get();
 
             BigDecimal totalTradeValue = trade.getPrice().multiply(trade.getAmount());
@@ -96,6 +102,7 @@ public class TradeController {
                 transaction.setPaymentMethod("Trade BUY");
                 transaction.setTimestamp(LocalDateTime.now());
                 transactionRepository.save(transaction);
+
             } else if (trade.getType().equalsIgnoreCase("SELL")) {
                 updatedBalance = currentBalance.add(totalTradeValue);
 
@@ -113,6 +120,33 @@ public class TradeController {
 
             Trade savedTrade = tradeRepository.save(trade);
             portfolioService.recalculatePortfolio(trade.getUserId());
+
+            // ==================== 🔔 Save Notification in DB ====================
+            String message = trade.getType().equalsIgnoreCase("BUY")
+                    ? "You bought " + trade.getAmount() + " " + trade.getSymbol() + " for ₹" + trade.getTotal()
+                    : "You sold " + trade.getAmount() + " " + trade.getSymbol() + " for ₹" + trade.getTotal();
+
+            Notification notification = new Notification(
+                    trade.getUserId(),
+                    trade.getType().toUpperCase(),
+                    message
+            );
+            notificationRepository.save(notification);
+
+            // ==================== 📧 Send Email Notification if Enabled ====================
+            Optional<UserSettings> settingsOpt = userSettingsRepository.findByUserId(trade.getUserId());
+            if (settingsOpt.isPresent()) {
+                UserSettings settings = settingsOpt.get();
+                if (settings.isNotificationsEnabled()) {
+                    mailService.sendTradeNotification(
+                            user.getEmail(),
+                            user.getFullname(),
+                            trade.getType(),
+                            trade.getTotal().doubleValue(),
+                            "INR"
+                    );
+                }
+            }
 
             return ResponseEntity.ok(savedTrade);
 

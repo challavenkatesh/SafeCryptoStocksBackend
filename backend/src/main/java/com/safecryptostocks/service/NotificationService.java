@@ -1,46 +1,53 @@
 package com.safecryptostocks.service;
 
-import com.safecryptostocks.model.User;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+import com.safecryptostocks.model.Notification;
+import com.safecryptostocks.repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class NotificationService {
 
     @Autowired
-    private JavaMailSender mailSender;
+    private NotificationRepository notificationRepository;
 
-    public void sendTradeNotification(User user, String tradeType, String symbol, String amount, String price, String total) {
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+    // 🔹 Get count of unread notifications
+    public long getUnreadCount(Long userId) {
+        return notificationRepository.countByUserIdAndIsReadFalse(userId);
+    }
 
-            helper.setTo(user.getEmail());
-            helper.setSubject("Trade " + tradeType + " Confirmation - SafeCryptoStocks");
+    // 🔹 Get all notifications of a user
+    public List<Notification> getUserNotifications(Long userId) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
 
-            String content = "<div style='font-family: Arial, sans-serif; padding: 15px;'>"
-                    + "<h2 style='color: #007BFF;'>Hello, " + user.getFullname() + " 👋</h2>"
-                    + "<p>Your trade has been successfully processed.</p>"
-                    + "<p><b>Trade Type:</b> " + tradeType + "</p>"
-                    + "<p><b>Asset Symbol:</b> " + symbol + "</p>"
-                    + "<p><b>Amount:</b> " + amount + "</p>"
-                    + "<p><b>Price:</b> " + price + "</p>"
-                    + "<p><b>Total Value:</b> " + total + "</p>"
-                    + "<hr>"
-                    + "<p>Thank you for trading with <b>SafeCryptoStocks</b> 🚀</p>"
-                    + "</div>";
+    // ✅ Mark all as read
+    public void markAllAsRead(Long userId) {
+        List<Notification> notifications = notificationRepository.findByUserId(userId);
+        for (Notification notification : notifications) {
+            notification.setRead(true);
+        }
+        notificationRepository.saveAll(notifications);
+    }
 
-            helper.setText(content, true);
-            mailSender.send(message);
+    // 🧹 Clear all notifications for a user
+    public void clearAllNotifications(Long userId) {
+        List<Notification> notifications = notificationRepository.findByUserId(userId);
+        if (!notifications.isEmpty()) {
+            notificationRepository.deleteAll(notifications);
+        }
+    }
 
-            System.out.println("✅ Trade email sent successfully to " + user.getEmail());
-
-        } catch (MessagingException e) {
-            System.err.println("❌ Failed to send trade notification email: " + e.getMessage());
+    // 🧹 Optional: Clear only notifications older than 7 days
+    public void clearOldNotifications(Long userId) {
+        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+        List<Notification> oldNotifications =
+                notificationRepository.findByUserIdAndCreatedAtBefore(userId, sevenDaysAgo);
+        if (!oldNotifications.isEmpty()) {
+            notificationRepository.deleteAll(oldNotifications);
         }
     }
 }

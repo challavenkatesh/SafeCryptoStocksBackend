@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/trades/**").permitAll()
                         .requestMatchers("/api/portfolio/**").permitAll()
                         .requestMatchers("/api/settings/**").permitAll()
+                        .requestMatchers("/api/notifications/**").permitAll()
 
                         // ✅ Allow stock chart proxy
                         .requestMatchers("/api/stocks/**").permitAll()

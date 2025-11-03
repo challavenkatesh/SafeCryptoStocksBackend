@@ -28,7 +28,24 @@ public class UserSettingsController {
             @PathVariable Long userId,
             @RequestBody UserSettings request
     ) {
-        UserSettings updated = userSettingsService.saveOrUpdateCurrency(userId, request.getCurrency());
-        return ResponseEntity.ok(updated);
+        UserSettings updatedSettings = userSettingsService.saveOrUpdateCurrency(userId, request.getCurrency());
+        return ResponseEntity.ok(updatedSettings);
+    }
+
+    // ✅ Get notification status
+    @GetMapping("/{userId}/notifications")
+    public ResponseEntity<Boolean> getNotificationStatus(@PathVariable Long userId) {
+        boolean status = userSettingsService.getNotificationStatus(userId);
+        return ResponseEntity.ok(status);
+    }
+
+    // ✅ Update notification status
+    @PutMapping("/{userId}/notifications")
+    public ResponseEntity<UserSettings> updateNotificationStatus(
+            @PathVariable Long userId,
+            @RequestBody UserSettings request
+    ) {
+        UserSettings updatedSettings = userSettingsService.updateNotificationStatus(userId, request.isNotificationsEnabled());
+        return ResponseEntity.ok(updatedSettings);
     }
 }

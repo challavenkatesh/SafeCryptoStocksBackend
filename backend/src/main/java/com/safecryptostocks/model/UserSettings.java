@@ -17,9 +17,13 @@ public class UserSettings {
     @Enumerated(EnumType.STRING)
     private CurrencyType currency = CurrencyType.INR;
 
+    @Column(nullable = false)
+    private boolean notificationsEnabled = false; // ✅ New field for email notifications
+
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    // 🔹 Constructors
     public UserSettings() {}
 
     public UserSettings(Long userId, CurrencyType currency) {
@@ -27,22 +31,56 @@ public class UserSettings {
         this.currency = currency;
     }
 
-    // Getters & Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    // 🔹 Getters & Setters
+    public Long getId() {
+        return id;
+    }
 
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public CurrencyType getCurrency() { return currency; }
-    public void setCurrency(CurrencyType currency) { this.currency = currency; }
+    public Long getUserId() {
+        return userId;
+    }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
 
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public CurrencyType getCurrency() {
+        return currency;
+    }
 
+    public void setCurrency(CurrencyType currency) {
+        this.currency = currency;
+    }
+
+    public boolean isNotificationsEnabled() {
+        return notificationsEnabled;
+    }
+
+    public void setNotificationsEnabled(boolean notificationsEnabled) {
+        this.notificationsEnabled = notificationsEnabled;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    // 🔹 Auto-update timestamp before save
     @PreUpdate
     public void onUpdate() {
         this.updatedAt = LocalDateTime.now();

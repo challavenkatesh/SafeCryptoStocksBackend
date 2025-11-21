@@ -4,13 +4,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Collections;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -31,8 +31,8 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
 
-        // Skip JWT check for public endpoints
-        if (path.equals("/api/login") || path.equals("/api/register") || path.equals("/")) {
+        // ✅ Skip JWT check for public endpoints
+        if (isPublicEndpoint(path)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -42,25 +42,42 @@ public class JwtFilter extends OncePerRequestFilter {
         String username = null;
 
         try {
+            // ✅ Extract token
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                token = authHeader.substring(7); // Remove "Bearer "
+                token = authHeader.substring(7);
                 username = jwtUtil.extractUsername(token);
             }
 
+            // ✅ Validate token
             if (username != null && jwtUtil.validateToken(token, username)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(username, null, new ArrayList<>());
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
 
             filterChain.doFilter(request, response);
 
         } catch (ExpiredJwtException e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("JWT expired. Please login again.");
+            response.getWriter().write("Token expired. Please login again.");
         } catch (JwtException e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Invalid JWT token.");
+            response.getWriter().write("Invalid token.");
+        } catch (Exception e) {
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().write("An unexpected error occurred.");
         }
+    }
+
+    private boolean isPublicEndpoint(String path) {
+        return path.startsWith("/api/login")
+                || path.startsWith("/api/register")
+                || path.startsWith("/api/auth/google")
+                || path.startsWith("/api/forgot-password")
+                || path.startsWith("/api/reset-password")
+                || path.startsWith("/api/verify-otp")
+                || path.startsWith("/api/payment")
+                || path.startsWith("/api/stocks")
+                || path.equals("/");
     }
 }

@@ -38,16 +38,22 @@ public class PortfolioController {
     }
 
     // ✅ Get All Portfolios by User ID
+    // ✅ Get Latest Portfolio by User ID
     @GetMapping("/{userId}")
-    public ResponseEntity<?> getPortfoliosByUserId(@PathVariable Long userId) {
+    public ResponseEntity<?> getLatestPortfolioByUserId(@PathVariable Long userId) {
         try {
-            List<Portfolio> portfolios = portfolioService.getPortfoliosByUserId(userId);
-            return ResponseEntity.ok(portfolios);
+            Portfolio latestPortfolio = portfolioService.getLatestPortfolioByUserId(userId);
+            if (latestPortfolio != null) {
+                return ResponseEntity.ok(latestPortfolio);
+            } else {
+                return ResponseEntity.status(404).body("No portfolio data found for userId: " + userId);
+            }
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(404).body("No portfolios found for userId: " + userId);
+            return ResponseEntity.status(500).body("Failed to fetch latest portfolio: " + e.getMessage());
         }
     }
+
 
     // ✅ Get Portfolio by User ID and Symbol
     @GetMapping("/{userId}/{symbolName}")

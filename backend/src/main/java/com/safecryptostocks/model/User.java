@@ -42,16 +42,18 @@ public class User {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    // ===== Add this new field =====
     @Column(nullable = true)
     private String profileImage;
+
+    // ✅ NEW FIELD: to identify if user is from Google or normal signup
+    @Column(nullable = false)
+    private String provider = "LOCAL"; // values: LOCAL | GOOGLE
 
     // Enum for reset state
     public enum ResetState {
         RESET_REQUESTED, EMAIL_VERIFIED, OTP_VERIFIED, PASSWORD_CHANGED
     }
 
-    // Constructors
     public User() {}
 
     public User(String fullname, String password, String email, String phonenumber, String address) {
@@ -63,7 +65,6 @@ public class User {
         this.resetState = ResetState.RESET_REQUESTED;
     }
 
-    // Auto timestamps
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -106,7 +107,10 @@ public class User {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
 
-    // ===== Profile Image getter/setter =====
     public String getProfileImage() { return profileImage; }
     public void setProfileImage(String profileImage) { this.profileImage = profileImage; }
+
+    // ✅ Provider field getter/setter
+    public String getProvider() { return provider; }
+    public void setProvider(String provider) { this.provider = provider; }
 }

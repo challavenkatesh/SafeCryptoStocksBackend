@@ -15,4 +15,8 @@ public interface PortfolioRepository extends JpaRepository<Portfolio, Long> {
     List<Portfolio> findAllByUserId(Long userId);
 
     List<Portfolio> findByUserId(Long userId);
+
+    // ✅ New method to fetch latest portfolio by userId (most recently updated)
+    Portfolio findTopByUserIdOrderByUpdatedAtDesc(Long userId);
+    Optional<Portfolio> findTopByUserIdOrderByIdDesc(Long userId);
 }

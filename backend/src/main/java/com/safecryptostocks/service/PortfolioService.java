@@ -54,9 +54,14 @@ public class PortfolioService {
                 .orElseThrow(() -> new RuntimeException("Portfolio not found for userId: " + userId + " and symbol: " + symbol));
     }
 
+    // ✅ Get the latest updated portfolio by userId
+    public Portfolio getLatestPortfolioByUserId(Long userId) {
+        return portfolioRepository.findTopByUserIdOrderByIdDesc(userId)
+                .orElseThrow(() -> new RuntimeException("No portfolio found for userId: " + userId));
+    }
+
     // ✅ Recalculate total portfolio value and profit/loss
     public void recalculatePortfolio(Long userId) {
-        // Fetch all trades of this user
         var trades = tradeRepository.findByUserIdOrderByTimestampDesc(userId);
 
         if (trades.isEmpty()) return;
@@ -64,7 +69,6 @@ public class PortfolioService {
         BigDecimal totalPortfolioValue = BigDecimal.ZERO;
         BigDecimal totalPL = BigDecimal.ZERO;
 
-        // Loop through trades to calculate portfolio metrics
         for (var trade : trades) {
             BigDecimal tradeValue = trade.getPrice().multiply(trade.getAmount());
 
@@ -72,11 +76,10 @@ public class PortfolioService {
                 totalPortfolioValue = totalPortfolioValue.add(tradeValue);
             } else if (trade.getType().equalsIgnoreCase("SELL")) {
                 totalPortfolioValue = totalPortfolioValue.subtract(tradeValue);
-                totalPL = totalPL.add(tradeValue); // you can adjust this based on logic
+                totalPL = totalPL.add(tradeValue);
             }
         }
 
-        // Fetch or create portfolio
         Optional<Portfolio> portfolioOpt = portfolioRepository.findByUserIdAndSymbol(userId, "ALL");
         Portfolio portfolio = portfolioOpt.orElseGet(Portfolio::new);
 

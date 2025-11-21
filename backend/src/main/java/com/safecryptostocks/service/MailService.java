@@ -12,7 +12,7 @@ import java.util.Properties;
 public class MailService {
 
     @Value("${spring.mail.username}")
-    private String senderEmail; // Sender email from application.properties
+    private String senderEmail;
 
     @Value("${spring.mail.password}")
     private String senderPassword;
@@ -21,63 +21,78 @@ public class MailService {
     // 🔹 OTP MAIL SERVICE
     // ============================
     public void sendOtp(String recipientEmail, String otp) {
-        String subject = "Your OTP for Password Reset";
-        String body = "Your OTP is: " + otp + "\n\nIt will expire in 5 minutes.";
-        sendMail(recipientEmail, subject, body);
+        String subject = "SafeCryptoStocks - Your One-Time Password (OTP)";
+        String body = """
+                <div style='font-family: Arial, sans-serif;'>
+                    <h2>🔐 Your OTP Verification Code</h2>
+                    <p>Hello User,</p>
+                    <p>Your OTP is: <strong style='color:#0b93f6; font-size:18px;'>%s</strong></p>
+                    <p>This OTP will expire in <b>5 minutes</b>.</p>
+                    <br>
+                    <p>Regards,<br><b>Team SafeCryptoStocks</b></p>
+                </div>
+                """.formatted(otp);
+
+        sendMail(recipientEmail, subject, body, true);
     }
 
     // ============================
-    // 🔹 TRADE NOTIFICATION (BUY / SELL)
+    // 🔹 TRADE NOTIFICATION
     // ============================
-    public void sendTradeNotification(
-            String recipientEmail,
-            String fullName,
-            String tradeType,
-            double amount,
-            String currency
-    ) {
+    public void sendTradeNotification(String recipientEmail, String fullName, String tradeType, double amount, String currency) {
         String subject = "SafeCryptoStocks - " + tradeType + " Transaction Successful";
-        String body = String.format(
-                "Hello %s,\n\nYour %s transaction was successful.\n\nDetails:\n- Type: %s\n- Amount: %.2f %s\n\nThank you for using SafeCryptoStocks!\n\n— Team SafeCryptoStocks",
-                fullName, tradeType.toLowerCase(), tradeType.toUpperCase(), amount, currency
-        );
-        sendMail(recipientEmail, subject, body);
+        String body = """
+                <div style='font-family: Arial, sans-serif;'>
+                    <h2>💹 Trade Confirmation</h2>
+                    <p>Hello %s,</p>
+                    <p>Your %s transaction was successful.</p>
+                    <ul>
+                        <li><b>Type:</b> %s</li>
+                        <li><b>Amount:</b> %.2f %s</li>
+                    </ul>
+                    <p>Thank you for trading with <b>SafeCryptoStocks</b>!</p>
+                    <p>— Team SafeCryptoStocks</p>
+                </div>
+                """.formatted(fullName, tradeType.toLowerCase(), tradeType.toUpperCase(), amount, currency);
+
+        sendMail(recipientEmail, subject, body, true);
     }
 
     // ============================
     // 🔹 WALLET NOTIFICATION
     // ============================
-    public void sendWalletNotification(
-            String recipientEmail,
-            String fullName,
-            double amount,
-            String currency,
-            String type
-    ) {
+    public void sendWalletNotification(String recipientEmail, String fullName, double amount, String currency, String type) {
         String subject = "SafeCryptoStocks - Wallet " + type + " Successful";
-        String body = String.format(
-                "Hello %s,\n\nYour wallet has been successfully %s.\n\nDetails:\n- Type: %s\n- Amount: %.2f %s\n\nYou can check your wallet balance anytime in your SafeCryptoStocks account.\n\n— Team SafeCryptoStocks",
-                fullName,
-                type.equalsIgnoreCase("DEPOSIT") ? "credited" : "debited",
-                type,
-                amount,
-                currency
-        );
-        sendMail(recipientEmail, subject, body);
+        String body = """
+                <div style='font-family: Arial, sans-serif;'>
+                    <h2>💰 Wallet Update</h2>
+                    <p>Hello %s,</p>
+                    <p>Your wallet has been successfully %s.</p>
+                    <ul>
+                        <li><b>Type:</b> %s</li>
+                        <li><b>Amount:</b> %.2f %s</li>
+                    </ul>
+                    <p>You can check your wallet balance anytime in your SafeCryptoStocks account.</p>
+                    <p>— Team SafeCryptoStocks</p>
+                </div>
+                """.formatted(fullName, type.equalsIgnoreCase("DEPOSIT") ? "credited" : "debited", type, amount, currency);
+
+        sendMail(recipientEmail, subject, body, true);
     }
 
     // ============================
     // 🔹 COMMON MAIL SENDER
     // ============================
-    private void sendMail(String recipientEmail, String subject, String body) {
-        // Mail server properties
+    private void sendMail(String recipientEmail, String subject, String body, boolean isHtml) {
         Properties props = new Properties();
         props.put("mail.smtp.auth", "true");
         props.put("mail.smtp.starttls.enable", "true");
         props.put("mail.smtp.host", "smtp.gmail.com");
         props.put("mail.smtp.port", "587");
+        props.put("mail.smtp.connectiontimeout", "10000");
+        props.put("mail.smtp.timeout", "10000");
+        props.put("mail.smtp.writetimeout", "10000");
 
-        // Authenticator for login
         Session session = Session.getInstance(props, new Authenticator() {
             protected PasswordAuthentication getPasswordAuthentication() {
                 return new PasswordAuthentication(senderEmail, senderPassword);
@@ -85,14 +100,16 @@ public class MailService {
         });
 
         try {
-            // Create the message
             Message message = new MimeMessage(session);
             message.setFrom(new InternetAddress(senderEmail));
             message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(recipientEmail));
             message.setSubject(subject);
-            message.setText(body);
 
-            // Send mail
+            if (isHtml)
+                message.setContent(body, "text/html; charset=utf-8");
+            else
+                message.setText(body);
+
             Transport.send(message);
             System.out.println("✅ Email sent successfully to: " + recipientEmail);
 
@@ -107,7 +124,6 @@ public class MailService {
     // ============================
     @Service
     public static class JwtService {
-        // Use the same secret key used while generating the JWT token
         private final String secret = "mysecretkeymysecretkeymysecretkey";
 
         public String extractUserId(String token) {
@@ -115,7 +131,7 @@ public class MailService {
                     .setSigningKey(secret)
                     .parseClaimsJws(token)
                     .getBody();
-            return claims.getSubject(); // or (String) claims.get("userId");
+            return claims.getSubject();
         }
     }
 }
